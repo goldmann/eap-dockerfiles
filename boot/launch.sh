@@ -20,7 +20,7 @@ if [ $# -lt 1 ]; then
   exit 1
 fi
 
-if [ "$1" = "standalone" ] || ["$1" = "domain" ]; then
+if [ "$1" = "standalone" ] || [ "$1" = "domain" ]; then
   CONFIGURATION=$1
 else
   echo "Only domain and standalone configuration are valid, you provided '$1'. Aborting."
