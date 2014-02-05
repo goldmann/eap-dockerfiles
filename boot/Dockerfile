@@ -12,9 +12,6 @@ ADD jboss-eap-6.2.0.zip /opt/
 RUN unzip -q /opt/jboss-eap-6.2.0.zip -d /opt/
 RUN rm /opt/jboss-eap-6.2.0.zip
 
-# Creates a management user
-RUN /opt/jboss-eap-6.2/bin/add-user.sh admin Admin#70365 --silent
-
 # Add the launch script which will be used as the entry point
 ADD launch.sh /opt/jboss-eap-6.2/bin/
 
