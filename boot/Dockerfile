@@ -1,4 +1,4 @@
-FROM centos
+FROM 10.64.27.125:5000/vpavlin/rhel6:latest
 
 # Execute system update
 RUN yum -y update
