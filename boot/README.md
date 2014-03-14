@@ -32,18 +32,20 @@ You can also run above container in the background
 
 ## Using with STI
 
-1. First make sure you have STI installed
+Here is how to use this image with STI
+
+### First make sure you have STI installed
 
     go get github.com/pmorie/go-sti/sti
 
-2. Build the kitchensink example with STI
+### Build the kitchensink example with STI
 
-   sti build git://github.com/pmorie/simple-jbosseap eap-6.2 kitchensink-eap
+    sti build git://github.com/pmorie/simple-jbosseap eap-6.2 kitchensink-eap
 
-3. Run the resulting image
+### Run the resulting image
 
-   docker run -i -t -p 18080:8080 kitchensink-eap
+    docker run -i -t -p 18080:8080 kitchensink-eap
 
-4. Confirm that the app works
+### Confirm that the app works
 
-Point your browser to http://localhost:18080/jboss-as-kitchensink.
+Point your browser to [http://localhost:18080/jboss-as-kitchensink](http://localhost:18080/jboss-as-kitchensink).
