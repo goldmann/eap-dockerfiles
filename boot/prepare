@@ -3,12 +3,12 @@
 JBOSS_HOME=/opt/jboss-eap-6.2
 JBOSS_BIN_DIR=${JBOSS_HOME}/bin
 JBOSS_PID_FILE=${JBOSS_HOME}/jboss.pid
-JBOSSEAP_DEPLOYMENTS_DIR=${JBOSS_HOME}/standalone/deployments
+JBOSS_DEPLOYMENTS_DIR=${JBOSS_HOME}/standalone/deployments
 
 function start() {
 	mkdir -p /jboss-prepare
 
-	echo "Starting $cartridge_type cartridge"
+	echo "Starting JBoss EAP"
 
 	${JBOSS_BIN_DIR}/standalone.sh > /jboss-prepare/start.log 2>&1 &
 	PROCESS_ID=$!
@@ -16,18 +16,18 @@ function start() {
 
 	rc=0
 	ishttpup || rc=$?
+
 	if [ $rc -eq 1 ]; then
-		echo "Timed out waiting for http listening port for $cartridge_type process"
-		exit 1
+		echo "Timed out waiting for http listening port for JBoss"
 	elif [ $rc -eq 2 ]; then
-		echo "$cartridge_type process failed to start"
+		echo "JBoss failed to start"
 		exit 2
 	fi
 }
 
 function stop() {
     if [ -f "$JBOSS_PID_FILE" ]; then
-    	echo "Stopping $cartridge_type cartridge"
+    	echo "Stopping JBoss"
     	pid=$(cat $JBOSS_PID_FILE);
     	echo "Sending SIGTERM to jboss:$pid ..." 1>&2
     	killtree $pid
@@ -111,6 +111,7 @@ function waitondeployments() {
         artifactsfailed=()
         artifactsskipped=()
         artifactsunknown=()
+
         for artifact in ${artifacts[*]}; do
           if ( [ -f $artifact ] && $deployarchive ) || ( [ -d $artifact ] && $deployexploded ); then
             # TODO triple check this logic, add a timeout 
@@ -161,7 +162,7 @@ function waitondeployments() {
 function getscanconfig() {
     count=0
     while [ ${count} -lt 4 ]; do
-		scanconfig=`jboss-cli.sh -c --controller=127.0.0.1:8080 "/subsystem=deployment-scanner/:read-resource(recursive=true)" 2>&1 || :`
+		scanconfig=`$JBOSS_BIN_DIR/jboss-cli.sh -c --controller=127.0.0.1:8080 "/subsystem=deployment-scanner/:read-resource(recursive=true)" 2>&1 || :`
       if [[ $scanconfig =~ '"outcome" => "success"' ]] ; then
         SCANCONFIG=$scanconfig
         return
@@ -210,18 +211,19 @@ function ismgmtup() {
     return 1
 }
 
-LOCAL_SOURCE_DIR=/eap-source
-
-mkdir -p $LOCAL_SOURCE_DIR
-cp -ad /usr/src/* $LOCAL_SOURCE_DIR
+local_source_dir=/eap-source
+mkdir -p $local_source_dir
+cp -ad /usr/src/* $local_source_dir
 
 if [ -f /eap-source/pom.xml ]; then
-	cd /eap-source
+	pushd /eap-source
 	mvn package
 
 	if [ $? -ne 0 ]; then
 		exit $?
 	fi
+
+	popd
 else
 	echo "Artifact deployment not implemented yet"
 	exit -1
@@ -232,6 +234,9 @@ fi
 # wait for deployment scanner to run
 # stop jboss
 artifact=/eap-source/deployments/ROOT.war
+
+cp $artifact $JBOSS_DEPLOYMENTS_DIR
+
 start
 waitondeployments
 stop
