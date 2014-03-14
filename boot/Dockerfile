@@ -1,5 +1,7 @@
 FROM 10.64.27.125:5000/vpavlin/rhel6:latest
 
+ADD ./openshift-origin-deps.repo /etc/yum.repos.d/openshift-origin-deps.repo
+
 # Execute system update
 RUN yum -y update
 # Install packages necessary to run EAP
