@@ -44,10 +44,11 @@ function stop() {
 
 function deploy() {
   echo "Deploying artifact $1..."
-  res=`$JBOSS_CLI -c "deploy $1" 2>&1 || :`
 
-  if [[ $res =~ '"outcome" => "success"' ]]; then
-    echo "EAP is stopped"
+  `$JBOSS_CLI -c "deploy $1" 2>&1 || :`
+
+  if [ $? -eq 0 ]; then
+    echo "Artifact $1 deployed"
     return 0
   fi
 
@@ -77,7 +78,7 @@ fi
 # start jboss (launch.sh)
 # wait for deployment scanner to run
 # stop jboss
-artifact=/eap-source/deployments/ROOT.war
+artifact=/eap-source/target/jboss-as-kitchensink.war
 
 start
 deploy $artifact
