@@ -6,11 +6,11 @@ JBOSS_PID_FILE=${JBOSS_HOME}/jboss.pid
 JBOSS_CLI=$JBOSS_BIN_DIR/jboss-cli.sh
 
 function start() {
-	mkdir -p /jboss-prepare
+  mkdir -p /jboss-prepare
 
-	echo "Starting JBoss EAP..."
+  echo "Starting JBoss EAP..."
 
-	${JBOSS_BIN_DIR}/standalone.sh > /jboss-prepare/start.log 2>&1 &
+  ${JBOSS_BIN_DIR}/standalone.sh > /jboss-prepare/start.log 2>&1 &
 
   count=0
   while [ ${count} -lt 64 ]
@@ -46,7 +46,6 @@ function deploy() {
   echo "Deploying artifact $1..."
 
   `$JBOSS_CLI -c "deploy $1" 2>&1 || :`
-
   if [ $? -eq 0 ]; then
     echo "Artifact $1 deployed"
     return 0
@@ -61,17 +60,17 @@ mkdir -p $local_source_dir
 cp -ad /usr/src/* $local_source_dir
 
 if [ -f /eap-source/pom.xml ]; then
-	pushd /eap-source
-	mvn package
+  pushd /eap-source
+  mvn package
 
-	if [ $? -ne 0 ]; then
-		exit $?
-	fi
+  if [ $? -ne 0 ]; then
+    exit $?
+  fi
 
-	popd
+  popd
 else
-	echo "Artifact deployment not implemented yet"
-	exit -1
+  echo "Artifact deployment not implemented yet"
+  exit -1
 fi
 
 # copy war into deployment dir
