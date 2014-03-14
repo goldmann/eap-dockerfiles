@@ -1,0 +1,242 @@
+#!/bin/bash 
+
+JBOSS_HOME=/opt/jboss-eap-6.2
+JBOSS_BIN_DIR=${JBOSS_HOME}/bin
+JBOSS_PID_FILE=${JBOSS_HOME}/jboss.pid
+JBOSS_DEPLOYMENTS_DIR=${JBOSS_HOME}/standalone/deployments
+
+function start() {
+	mkdir -p /jboss-prepare
+
+	echo "Starting JBoss EAP"
+
+	${JBOSS_BIN_DIR}/standalone.sh > /jboss-prepare/start.log 2>&1 &
+	PROCESS_ID=$!
+	echo "$PROCESS_ID" > ${JBOSS_PID_FILE}
+
+	rc=0
+	ishttpup || rc=$?
+
+	if [ $rc -eq 1 ]; then
+		echo "Timed out waiting for http listening port for JBoss"
+	elif [ $rc -eq 2 ]; then
+		echo "JBoss failed to start"
+		exit 2
+	fi
+}
+
+function stop() {
+    if [ -f "$JBOSS_PID_FILE" ]; then
+    	echo "Stopping JBoss"
+    	pid=$(cat $JBOSS_PID_FILE);
+    	echo "Sending SIGTERM to jboss:$pid ..." 1>&2
+    	killtree $pid
+	else 
+		echo "Failed to locate JBOSS PID File" 1>&2
+    fi
+}
+
+function killtree() {
+    local _pid=$1
+    for _child in $(ps -o pid --no-headers --ppid ${_pid}); do
+        killtree ${_child}
+    done
+
+    local should_be_gone_pid=$(ps -o pid -p ${_pid} --no-headers)
+    if [ -z "$should_be_gone_pid" ]; then
+        return
+    else
+        # process might have finished stopping after the ps check above
+        # so prevent kill from throwing an error (which would exit the script due to bash -e)
+        # with || true
+        kill -TERM ${_pid} || true
+    fi
+
+    local count=0
+    while [ ${count} -lt 15 ]
+    do
+        local should_be_gone_pid=$(ps -o pid -p ${_pid} --no-headers)
+        if [ -z "$should_be_gone_pid" ]; then
+                return
+        else
+                sleep 2
+                let count=${count}+1
+        fi
+    done
+
+    local should_be_gone_pid=$(ps -o pid -p ${_pid} --no-headers)
+    if [ ! -z $should_be_gone_pid ]
+    then
+        kill -9 ${_pid}
+    fi
+}
+
+# Verify that the deployment scanner has finished running
+function waitondeployments() {
+    if ! ismgmtup; then
+      echo "Timed out waiting for management listening port"
+      echo "Could not connect to JBoss management interface, skipping deployment verification"
+    else
+      SCANCONFIG=""
+      c=0
+      while [ "$SCANCONFIG" == "" ] && [ $c -lt 5 ]; do
+        getscanconfig
+        if [ "$SCANCONFIG" != "" ]; then
+          break
+        fi
+        sleep 2
+        let c=c+1
+      done
+
+      if [ "$SCANCONFIG" == "" ]; then
+        client_message "Could not connect to JBoss management interface, skipping deployment verification"
+      elif [[ $SCANCONFIG =~ '"scan-enabled" => true' ]]; then
+        pushd $JBOSS_DEPLOYMENTS_DIR
+
+        artifacts=()
+        while read -r -d $'\0'; do
+          artifacts+=("$REPLY")
+        done < <(find . -iregex '.*\.\([ejrsw]ar\|zip\)$' -print0)
+
+        deployexploded=false
+        if [[ $SCANCONFIG =~ '"auto-deploy-exploded" => true' ]]; then
+          deployexploded=true
+        fi
+        deployarchive=false
+        if [[ $SCANCONFIG =~ '"auto-deploy-zipped" => true' ]]; then
+          deployarchive=true
+        fi
+
+        artifactsdeployed=()
+        artifactsfailed=()
+        artifactsskipped=()
+        artifactsunknown=()
+
+        for artifact in ${artifacts[*]}; do
+          if ( [ -f $artifact ] && $deployarchive ) || ( [ -d $artifact ] && $deployexploded ); then
+            # TODO triple check this logic, add a timeout 
+            while [ -f ${artifact}.isdeploying ]; do
+              client_message "Artifact: ${artifact} is still deploying"
+              sleep 10
+            done
+
+            if [ -f ${artifact}.deployed ]; then
+              artifactsdeployed+=($artifact)
+            elif [ -f ${artifact}.failed ]; then
+              artifactsfailed+=($artifact)
+            else
+              artifactsunknown+=($artifact)
+            fi
+
+          else
+            # artifact skipped because of deployment scanner config
+            artifactsskipped+=($artifact)
+          fi
+        done
+
+        popd
+
+        if [ ${#artifactsskipped[@]} -gt 0 ]; then
+          echo "Artifacts skipped because of deployment-scanner configuration: ${artifactsskipped[*]}"
+        fi
+
+        if [ ${#artifactsfailed[@]} -gt 0 ]; then
+          echo "Failed deployments: ${artifactsfailed[*]}"
+          exit -1
+        fi
+
+        if [ ${#artifactsdeployed[@]} -gt 0 ]; then
+          echo "Artifacts deployed: ${artifactsdeployed[*]}"
+        fi
+
+        if [ ${#artifactsunknown[@]} -gt 0 ]; then
+          echo "Artifacts in an unknown state: ${artifactsunknown[*]}"
+        fi
+      else
+          echo "Deployment scanner disabled, skipping deployment verification"
+      fi
+    fi
+}
+
+# Return the deployment-scanner configuration
+function getscanconfig() {
+    count=0
+    while [ ${count} -lt 4 ]; do
+		scanconfig=`$JBOSS_BIN_DIR/jboss-cli.sh -c --controller=127.0.0.1:8080 "/subsystem=deployment-scanner/:read-resource(recursive=true)" 2>&1 || :`
+      if [[ $scanconfig =~ '"outcome" => "success"' ]] ; then
+        SCANCONFIG=$scanconfig
+        return
+      fi
+      let count+=1
+
+      sleep 2
+    done
+}
+
+# Check if the server http port is up
+function ishttpup() {
+    count=0
+    while [ ${count} -lt 64 ]
+    do
+        if /usr/sbin/lsof -P -n -i "@127.0.0.1:8080" | grep "(LISTEN)" > /dev/null; then
+            echo "Found 127.0.0.1:8080 listening port"
+            return 0
+        fi
+        # if the process failed to start, error out immediately
+        # rather than waiting for the timeout on the port being available.
+        if ! ps | grep -v grep | grep $PROCESS_ID > /dev/null; then
+          return 2
+        fi
+        let count=${count}+1
+
+        sleep 2
+    done
+    return 1
+}
+
+# Check if the server mgmt port is up
+function ismgmtup() {
+    let count=0
+    while [ ${count} -lt 10 ]
+    do
+        if /usr/sbin/lsof -P -n -i "@127.0.0.1:9999" | grep "(LISTEN)" > /dev/null; then
+            echo "Found 127.0.0.1:9999 listening port"
+            return 0
+        fi
+        let count=${count}+1
+
+        sleep 2
+    done
+
+    return 1
+}
+
+local_source_dir=/eap-source
+mkdir -p $local_source_dir
+cp -ad /usr/src/* $local_source_dir
+
+if [ -f /eap-source/pom.xml ]; then
+	pushd /eap-source
+	mvn package
+
+	if [ $? -ne 0 ]; then
+		exit $?
+	fi
+
+	popd
+else
+	echo "Artifact deployment not implemented yet"
+	exit -1
+fi
+
+# copy war into deployment dir
+# start jboss (launch.sh)
+# wait for deployment scanner to run
+# stop jboss
+artifact=/eap-source/deployments/ROOT.war
+
+cp $artifact $JBOSS_DEPLOYMENTS_DIR
+
+start
+waitondeployments
+stop

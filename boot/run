@@ -1,0 +1,3 @@
+#!/bin/bash 
+
+/opt/jboss-eap-6.2/bin/launch.sh standalone $@
