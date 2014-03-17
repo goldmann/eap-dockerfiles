@@ -31,5 +31,5 @@ JBOSS_HOME=/opt/jboss-eap-6.2
 
 shift 1
 
-$JBOSS_HOME/bin/${CONFIGURATION}.sh $@
+exec $JBOSS_HOME/bin/${CONFIGURATION}.sh $@
 
