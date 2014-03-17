@@ -55,11 +55,30 @@ function deploy() {
   return 1
 }
 
+function restore_saved_artifacts() {
+  if [ -f /usr/artifacts/maven.tar.gz ]; then
+    echo "Restoring saved artifacts from prior build"
+    pushd /
+    tar zxvf /usr/artifacts/maven.tar.gz
+    popd
+  fi
+}
+
+function deploy_all_wars() {
+  target_dir=$1
+  for f in $target_dir/*.war
+  do
+    deploy $f
+  done
+}
+
 local_source_dir=/eap-source
 mkdir -p $local_source_dir
 cp -ad /usr/src/* $local_source_dir
+artifact_dir=$local_source_dir/target
 
 if [ -f /eap-source/pom.xml ]; then
+  restore_saved_artifacts
   pushd /eap-source
   mvn package
 
@@ -69,16 +88,9 @@ if [ -f /eap-source/pom.xml ]; then
 
   popd
 else
-  echo "Artifact deployment not implemented yet"
-  exit -1
+  artifact_dir=$local_source_dir
 fi
 
-# copy war into deployment dir
-# start jboss (launch.sh)
-# wait for deployment scanner to run
-# stop jboss
-artifact=/eap-source/target/jboss-as-kitchensink.war
-
 start
-deploy $artifact
+deploy_all_wars $artifact_dir
 stop

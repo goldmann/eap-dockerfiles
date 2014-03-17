@@ -32,4 +32,5 @@ CMD ["/eap/bin/launch", "standalone", "-b", "0.0.0.0"]
 # Add scripts for sti compatibility
 ADD ./prepare /usr/bin/prepare
 ADD ./run /usr/bin/run
-RUN chmod +x /usr/bin/{prepare,run}
+ADD ./save-artifacts /usr/bin/save-artifacts
+RUN chmod +x /usr/bin/{prepare,run,save-artifacts}
