@@ -30,6 +30,8 @@ if [ -f "$local_source_dir/pom.xml" ]; then
 
   popd
 else
-  cp *.war $artifact_dir/
+  echo -n "Copying binaries in source directory into /artifacts for later deployment..."
+  cp $local_source_dir/*.war $artifact_dir/
+  echo "...done"
 fi
 
