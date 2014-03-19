@@ -20,6 +20,44 @@ if [ $# -lt 1 ]; then
   exit 1
 fi
 
+JBOSS_HOME=/opt/jboss-eap-6.2
+JBOSS_BIN_DIR=${JBOSS_HOME}/bin
+JBOSS_CLI=$JBOSS_BIN_DIR/jboss-cli.sh
+
+function deploy() {
+  echo "Deploying artifact $1..."
+
+  `$JBOSS_CLI -c "deploy $1" 2>&1 || :`
+  if [ $? -eq 0 ]; then
+    echo "Artifact $1 deployed"
+    return 0
+  fi
+
+  echo "Failed to deploy artifact $1"
+  return 1
+}
+
+function wait_for_server() {
+  until `$JBOSS_CLI -c "ls /deployment" &> /dev/null`; do
+    sleep 1
+  done
+}
+
+function deploy_all_wars() {
+  artifact_dir=/artifacts
+
+  if [ ! -d "$artifact_dir" ]; then
+    return 1
+  fi
+
+  wait_for_server
+
+  for f in $artifact_dir/*.war
+  do
+    deploy $f
+  done
+}
+
 if [ "$1" = "standalone" ] || [ "$1" = "domain" ]; then
   CONFIGURATION=$1
 else
@@ -27,7 +65,8 @@ else
   exit 1
 fi
 
-JBOSS_HOME=/opt/jboss-eap-6.2
+# Run the deployment in the background
+deploy_all_wars &
 
 shift 1
 

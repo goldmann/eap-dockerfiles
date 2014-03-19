@@ -1,60 +1,5 @@
 #!/bin/bash 
 
-JBOSS_HOME=/opt/jboss-eap-6.2
-JBOSS_BIN_DIR=${JBOSS_HOME}/bin
-JBOSS_PID_FILE=${JBOSS_HOME}/jboss.pid
-JBOSS_CLI=$JBOSS_BIN_DIR/jboss-cli.sh
-
-function start() {
-  mkdir -p /jboss-prepare
-
-  echo "Starting JBoss EAP..."
-
-  ${JBOSS_BIN_DIR}/standalone.sh > /jboss-prepare/start.log 2>&1 &
-
-  count=0
-  while [ ${count} -lt 64 ]
-  do
-    res=`$JBOSS_CLI -c ":read-attribute(name=server-state)" 2>&1 || :`
-
-    if [[ $res =~ '"result" => "running"' ]]; then
-      echo "JBoss EAP is running"
-      return 0
-    fi
-
-    let count+=1
-    sleep 2
-  done
-
-  echo "JBoss EAP failed to launch"
-  exit 1
-}
-
-function stop() {
-  res=`$JBOSS_CLI -c ":shutdown" 2>&1 || :`
-
-  if [[ $res =~ '"outcome" => "success"' ]]; then
-    echo "EAP is stopped"
-    return 0
-  fi
-
-  echo "EAP failed to stop"
-  return 1
-}
-
-function deploy() {
-  echo "Deploying artifact $1..."
-
-  `$JBOSS_CLI -c "deploy $1" 2>&1 || :`
-  if [ $? -eq 0 ]; then
-    echo "Artifact $1 deployed"
-    return 0
-  fi
-
-  echo "Failed to deploy artifact $1"
-  return 1
-}
-
 function restore_saved_artifacts() {
   if [ -f /usr/artifacts/maven.tar.gz ]; then
     echo "Restoring saved artifacts from prior build"
@@ -64,33 +9,27 @@ function restore_saved_artifacts() {
   fi
 }
 
-function deploy_all_wars() {
-  target_dir=$1
-  for f in $target_dir/*.war
-  do
-    deploy $f
-  done
-}
-
 local_source_dir=/eap-source
-mkdir -p $local_source_dir
-cp -ad /usr/src/* $local_source_dir
-artifact_dir=$local_source_dir/target
+artifact_dir=/artifacts
 
-if [ -f /eap-source/pom.xml ]; then
+mkdir -p $local_source_dir
+mkdir -p $artifact_dir
+
+cp -ad /usr/src/* $local_source_dir
+
+if [ -f "$local_source_dir/pom.xml" ]; then
   restore_saved_artifacts
-  pushd /eap-source
+  pushd $local_source_dir
   mvn package
 
   if [ $? -ne 0 ]; then
     exit $?
   fi
 
+  cp target/*.war $artifact_dir/
+
   popd
 else
-  artifact_dir=$local_source_dir
+  cp *.war $artifact_dir/
 fi
 
-start
-deploy_all_wars $artifact_dir
-stop
