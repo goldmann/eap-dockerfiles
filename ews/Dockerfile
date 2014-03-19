@@ -1,5 +1,7 @@
 FROM 10.64.27.125:5000/vpavlin/rhel6:latest
 
+# Update the system
+RUN yum -y update
 # Install unzip and apr-util
 RUN yum -y install unzip apr-util mailcap
 # Cleanup the yum database
