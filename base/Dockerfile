@@ -27,7 +27,7 @@ RUN ln -s /opt/jboss-eap-6.2 /eap
 ADD launch /opt/jboss-eap-6.2/bin/
 
 # Specify default values for entry point
-CMD ["/eap/bin/launch", "standalone", "-c", "standlone-ha.xml", "-b", "0.0.0.0"]
+CMD ["/eap/bin/launch", "standalone", "-c", "standalone-ha.xml", "-b", "0.0.0.0"]
 
 # Add scripts for sti compatibility
 ADD ./prepare /usr/bin/prepare
