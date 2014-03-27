@@ -21,7 +21,8 @@ RUN /opt/jboss-eap-6.2/bin/jboss-cli.sh --command="patch apply /opt/jboss-eap-6.
 RUN rm /opt/jboss-eap*.zip
 
 RUN groupadd -r jbosseap -g 433 && \
-useradd -u 431 -r -g jbosseap -d /opt/jboss-eap-6.2 -s /sbin/nologin -c "JBossEAP user" jbosseap
+useradd -u 431 -r -g jbosseap -d /opt/jboss-eap-6.2 -s /sbin/nologin -c "JBossEAP user" jbosseap && \
+chown -R jbosseap:jbosseap /opt/jboss-eap-6.2
 
 # Link the EAP installation
 RUN ln -s /opt/jboss-eap-6.2 /eap
@@ -36,7 +37,7 @@ CMD ["/eap/bin/launch", "standalone", "-c", "standalone-ha.xml", "-b", "0.0.0.0"
 ADD ./prepare /usr/bin/prepare
 ADD ./run /usr/bin/run
 ADD ./save-artifacts /usr/bin/save-artifacts
-RUN chmod a+x /usr/bin/{prepare,run,save-artifacts}
+RUN chmod a+rx /usr/bin/{prepare,run,save-artifacts}
 
 USER jbosseap
 
