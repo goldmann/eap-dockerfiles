@@ -6,7 +6,7 @@ ADD ./openshift-origin-deps.repo /etc/yum.repos.d/openshift-origin-deps.repo
 RUN yum -y update
 
 # Install packages necessary to install and run EAP
-RUN yum -y install java-1.7.0-openjdk-devel maven3 unzip
+RUN yum -y install java-1.7.0-openjdk-devel mysql-connector-java.noarch 1:5.1.17-6.el6 maven3 unzip
 RUN yum clean all
 
 # Copy the EAP to image, unpack and clean up afterwards
@@ -16,6 +16,8 @@ RUN unzip -q /opt/jboss-eap-6.2.0.zip -d /opt/
 # Upgrade to 6.2.1
 ADD jboss-eap-6.2.1.zip /opt/
 RUN /opt/jboss-eap-6.2/bin/jboss-cli.sh --command="patch apply /opt/jboss-eap-6.2.1.zip"
+
+ADD ./mysql-module.xml /opt/jboss-eap-6.2/modules/com/mysql/jdbc/main/module.xml
 
 # Remove unneeded zip files
 RUN rm /opt/jboss-eap*.zip
