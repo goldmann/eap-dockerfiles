@@ -6,18 +6,24 @@ ADD ./openshift-origin-deps.repo /etc/yum.repos.d/openshift-origin-deps.repo
 RUN yum -y update
 
 # Install packages necessary to install and run EAP
-RUN yum -y install java-1.7.0-openjdk-devel mysql-connector-java.noarch 1:5.1.17-6.el6 maven3 unzip
+RUN yum -y install java-1.7.0-openjdk-devel maven3 unzip
 RUN yum clean all
 
 # Copy the EAP to image, unpack and clean up afterwards
 ADD jboss-eap-6.2.0.zip /opt/
 RUN unzip -q /opt/jboss-eap-6.2.0.zip -d /opt/
 
-# Upgrade to 6.2.1
-ADD jboss-eap-6.2.1.zip /opt/
-RUN /opt/jboss-eap-6.2/bin/jboss-cli.sh --command="patch apply /opt/jboss-eap-6.2.1.zip"
+# Upgrade to 6.2.2
+ADD jboss-eap-6.2.2.zip /opt/
+RUN /opt/jboss-eap-6.2/bin/jboss-cli.sh --command="patch apply /opt/jboss-eap-6.2.2.zip"
 
-ADD ./mysql-module.xml /opt/jboss-eap-6.2/modules/com/mysql/jdbc/main/module.xml
+# Install mysql module
+ADD mysql-module.xml /opt/jboss-eap-6.2/modules/system/layers/base/com/mysql/jdbc/main/module.xml
+ADD mysql-connector-java-5.1.30-bin.jar /opt/jboss-eap-6.2/modules/system/layers/base/com/mysql/jdbc/main/mysql-connector-java.jar
+
+# Install the mongodb module
+ADD mongodb-module.xml /opt/jboss-eap-6.2/modules/system/layers/base/com/mongodb/main/module.xml
+ADD mongo-java-driver-2.9.3.jar /opt/jboss-eap-6.2/modules/system/layers/base/com/mongodb/main/mongo-java-driver.jar
 
 # Remove unneeded zip files
 RUN rm /opt/jboss-eap*.zip
