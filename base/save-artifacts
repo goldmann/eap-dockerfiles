@@ -1,4 +1,4 @@
 #!/bin/bash -x
 
-cd /root
-tar czvf /usr/artifacts/maven.tar.gz /root/.m2
+cd /opt/jboss-eap-6.2
+tar czvf /tmp/artifacts/maven.tar.gz /opt/jboss-eap-6.2/.m2
