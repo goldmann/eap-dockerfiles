@@ -2,11 +2,11 @@
 
 function restore_saved_artifacts() {
   if [ -f /tmp/artifacts/maven.tar.gz ]; then
-    pushd /
+    pushd / &> /dev/null
     echo -n "Restoring saved artifacts from prior build..."
     tar zxf /tmp/artifacts/maven.tar.gz
     echo "...done"
-    popd
+    popd &> /dev/null
   fi
 }
 
@@ -20,7 +20,7 @@ cp -ad /tmp/src/* $local_source_dir
 
 if [ -f "$local_source_dir/pom.xml" ]; then
   restore_saved_artifacts
-  pushd $local_source_dir
+  pushd $local_source_dir &> /dev/null
   mvn package
 
   if [ $? -ne 0 ]; then
@@ -31,7 +31,7 @@ if [ -f "$local_source_dir/pom.xml" ]; then
   cp target/*.war $artifact_dir/
   echo "...done"
 
-  popd
+  popd &> /dev/null
 else
   echo -n "Copying binaries in source directory into $artifact_dir for later deployment..."
   cp $local_source_dir/*.war $artifact_dir/
