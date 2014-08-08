@@ -27,7 +27,7 @@ else
   exit 1
 fi
 
-JBOSS_HOME=/opt/jboss-eap-6.2
+JBOSS_HOME=/opt/jboss-eap
 
 shift 1
 
